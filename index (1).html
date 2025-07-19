@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>musublast</title>
+  <style>
+    body {
+      background: #222 url('image3.png') center center/cover no-repeat fixed;
+      font-family: sans-serif;
+      text-align: center;
+    }
+    #container {
+      background: rgba(255,255,255,0.85);
+      display: inline-block;
+      border-radius: 18px;
+      box-shadow: 0 4px 24px #2226;
+      padding: 16px 32px 32px 32px;
+      margin-top: 32px;
+    }
+    #game-board {
+      display: inline-block;
+      background: #ddd;
+      padding: 10px;
+      border-radius: 10px;
+      margin-top: 30px;
+      box-shadow: 0 4px 24px #0001;
+    }
+    .row {
+      display: flex;
+    }
+    .block {
+      width: 48px;
+      height: 48px;
+      margin: 2px;
+      cursor: pointer;
+      background-repeat: no-repeat;
+      background-size: cover;
+      border-radius: 6px;
+      border: 1.5px solid #aaa;
+      box-sizing: border-box;
+      position: relative;
+      transition: transform 0.25s cubic-bezier(.43,1.66,.56,1), opacity 0.2s;
+      z-index: 1;
+    }
+    .block.empty {
+      opacity: 0;
+      pointer-events: none;
+      border: 1.5px solid transparent;
+    }
+    .block.color-red::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 6px;
+      background: rgba(255, 0, 0, 0.5);
+      pointer-events: none;
+      z-index: 2;
+    }
+    .block.color-blue::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 6px;
+      background: rgba(0, 120, 255, 0.5);
+      pointer-events: none;
+      z-index: 2;
+    }
+    .block.color-green::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 6px;
+      background: rgba(0, 200, 100, 0.5);
+      pointer-events: none;
+      z-index: 2;
+    }
+    .block.color-yellow::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 6px;
+      background: rgba(255, 220, 44, 0.5);
+      pointer-events: none;
+      z-index: 2;
+    }
+    .block.color-gray::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 6px;
+      background: rgba(130, 130, 130, 0.5);
+      pointer-events: none;
+      z-index: 2;
+    }
+    .block.removing {
+      animation: popOut 0.35s forwards;
+      z-index: 10;
+    }
+    @keyframes popOut {
+      0%   { opacity: 1; transform: scale(1); }
+      80%  { opacity: 1; transform: scale(1.15);}
+      100% { opacity: 0; transform: scale(0.7); }
+    }
+    .block.falling {
+      animation: fallDown 0.35s cubic-bezier(.43,1.66,.56,1);
+      z-index: 5;
+    }
+    @keyframes fallDown {
+      0%   { transform: translateY(-60px);}
+      70%  { transform: translateY(5px);}
+      90%  { transform: translateY(-3px);}
+      100% { transform: translateY(0);}
+    }
+    .block.stage-clear {
+      animation: stageClearFade 0.4s forwards;
+      z-index: 10;
+    }
+    @keyframes stageClearFade {
+      to {
+        opacity: 0;
+      }
+    }
+    #title {
+      font-size: 2.3em;
+      letter-spacing: 0.07em;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 2px 10px #000a, 0 1px 0 #888;
+      margin-top: 14px;
+      margin-bottom: 0.2em;
+    }
+    #stage-info {
+      font-size: 1.2em;
+      margin-top: 10px;
+      margin-bottom: 5px;
+      color: #444;
+    }
+    #turn-info {
+      font-size: 1.2em;
+      margin-top: 5px;
+      margin-bottom: 5px;
+      color: #444;
+    }
+    #message {
+      font-size: 1.5em;
+      color: #3b5;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      font-weight: bold;
+      min-height: 2em;
+    }
+    #btns {
+      margin-top: 15px;
+      margin-bottom: 15px;
+    }
+    #start-btn, #reset-btn {
+      font-size: 1.1em;
+      padding: 0.5em 1.5em;
+      margin: 0 0.5em;
+      border: none;
+      border-radius: 6px;
+      background: #48a;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    #reset-btn {
+      background: #888;
+    }
+    #start-btn:disabled, #reset-btn:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+    #instructions {
+      margin: 16px 0 6px 0;
+      font-size: 1.1em;
+      background: rgba(255,255,255,0.86);
+      border-radius: 8px;
+      box-shadow: 0 2px 10px #0001;
+      padding: 0.7em 0.6em 0.7em 0.6em;
+      color: #334;
+      line-height: 1.7;
+      max-width: 540px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .hidden {
+      display: none !important;
+    }
+    @media (max-width: 700px) {
+      #container { padding: 2vw 2vw 5vw 2vw; }
+      #game-board { padding: 3vw; }
+      .block { width: 9vw; height: 9vw; min-width:36px; min-height:36px; }
+      #instructions { font-size: 1em; padding: 0.7em 0.1em 0.7em 0.1em;}
+    }
+  </style>
+</head>
+<body>
+  <div id="title">musublast</div>
+  <div id="container">
+    <div id="stage-info"></div>
+    <div id="turn-info"></div>
+    <div id="message"></div>
+    <div id="game-board"></div>
+    <div id="instructions">
+      同じ色のブロックが2個以上つながっている場所をタップして消そう！<br>
+      <b>灰色ブロック</b>（image2.png）は、<br>
+      <b>色付きブロックが壊れた時に隣接していれば一緒に壊れる！</b><br>
+      ターンがなくなる前にクリアしよう！
+    </div>
+    <div id="btns">
+      <button id="start-btn" onclick="startGame()">スタート</button>
+      <button id="reset-btn" onclick="resetGame()" disabled>リセット</button>
+    </div>
+  </div>
+  <!-- 効果音と音楽 -->
+  <audio id="se" src="a.mp3" preload="auto"></audio>
+  <audio id="bgm" src="i.mp3" preload="auto" loop></audio>
+  <script>
+    const COLORS = ['red', 'blue', 'green', 'yellow'];
+    const GRAY_COLOR = 'gray';
+    const ALL_COLORS = [...COLORS, GRAY_COLOR];
+
+    const STAGES = [
+      {rows: 7, cols: 7, grayMin: 2, turn: 15},
+      {rows: 8, cols: 8, grayMin: 3, turn: 17},
+      {rows: 9, cols: 9, grayMin: 4, turn: 19},
+      {rows:10, cols:10, grayMin: 6, turn: 21},
+      {rows:12, cols:12, grayMin: 9, turn: 28},
+    ];
+
+    let stage = 0;
+    let ROWS = 8, COLS = 8;
+    let board = [];
+    let animating = false;
+    let messageTimeout = null;
+    let turns = 0;
+    let gameStarted = false;
+    let cleared = false;
+    let gameOvered = false;
+    let isStageClearAnimating = false;
+
+    function getBlockImage(color) {
+      if (color === 'gray') return `image2.png`;
+      return `image.png`;
+    }
+
+    function initBoard() {
+      board = [];
+      cleared = false;
+      gameOvered = false;
+      let grayCount = 0;
+      let grayPositions = [];
+      ROWS = STAGES[stage].rows;
+      COLS = STAGES[stage].cols;
+      while(grayCount < STAGES[stage].grayMin) {
+        board = [];
+        grayPositions = [];
+        for (let r = 0; r < ROWS; r++) {
+          let row = [];
+          for (let c = 0; c < COLS; c++) {
+            let color = Math.random() < 0.12 ? GRAY_COLOR : COLORS[Math.floor(Math.random() * COLORS.length)];
+            if (color === GRAY_COLOR) grayPositions.push([r, c]);
+            row.push({
+              color,
+              empty: false,
+              removing: false,
+              falling: false,
+              stageClear: false,
+            });
+          }
+          board.push(row);
+        }
+        grayCount = grayPositions.length;
+      }
+    }
+
+    function renderBoard() {
+      const boardDiv = document.getElementById('game-board');
+      boardDiv.innerHTML = '';
+      board.forEach((row, r) => {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'row';
+        row.forEach((block, c) => {
+          const div = document.createElement('div');
+          div.className = 'block';
+          if (block.empty) {
+            div.classList.add('empty');
+          } else {
+            div.style.backgroundImage = `url('${getBlockImage(block.color)}')`;
+            div.classList.add('color-' + block.color);
+            if (block.removing) div.classList.add('removing');
+            if (block.falling) div.classList.add('falling');
+            if (block.stageClear) div.classList.add('stage-clear');
+          }
+          div.onclick = () => handleBlockClick(r, c);
+          rowDiv.appendChild(div);
+        });
+        boardDiv.appendChild(rowDiv);
+      });
+      document.getElementById('stage-info').textContent = gameStarted ? `ステージ: ${stage+1}` : "";
+      document.getElementById('turn-info').textContent = gameStarted ? `ターン: ${turns}` : "";
+
+      // ボタンの表示制御
+      const startBtn = document.getElementById('start-btn');
+      const resetBtn = document.getElementById('reset-btn');
+      if (gameStarted) {
+        startBtn.classList.add('hidden');
+        resetBtn.classList.add('hidden');
+      } else {
+        startBtn.classList.remove('hidden');
+        resetBtn.classList.remove('hidden');
+      }
+      startBtn.disabled = gameStarted;
+      resetBtn.disabled = !gameStarted;
+
+      // インストラクション表示制御
+      const instructions = document.getElementById('instructions');
+      if (gameStarted) {
+        instructions.classList.add('hidden');
+      } else {
+        instructions.classList.remove('hidden');
+      }
+    }
+
+    function getConnectedBlocks(r, c, visited = {}) {
+      const color = board[r][c].color;
+      const key = r + ',' + c;
+      if (board[r][c].empty || visited[key]) return [];
+      let blocks = [[r, c]];
+      visited[key] = true;
+      [[1,0],[0,1],[-1,0],[0,-1]].forEach(([dr, dc]) => {
+        const nr = r+dr, nc = c+dc;
+        if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+          if (!board[nr][nc].empty && board[nr][nc].color === color && !visited[nr+','+nc]) {
+            blocks = blocks.concat(getConnectedBlocks(nr, nc, visited));
+          }
+        }
+      });
+      return blocks;
+    }
+
+    function handleBlockClick(r, c) {
+      if (!gameStarted || animating || cleared || gameOvered || isStageClearAnimating) return;
+      if (board[r][c].empty) return;
+      if (board[r][c].color === GRAY_COLOR) return;
+      const connected = getConnectedBlocks(r, c, {});
+      if (connected.length < 2) return;
+      playSE();
+      animating = true;
+      let removingSet = new Set(connected.map(([rr,cc])=>`${rr},${cc}`));
+      let grayToRemove = [];
+      for (const [rr, cc] of connected) {
+        [[1,0],[0,1],[-1,0],[0,-1]].forEach(([dr,dc]) => {
+          const nr = rr+dr, nc = cc+dc;
+          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+            const blk = board[nr][nc];
+            if (!blk.empty && blk.color === GRAY_COLOR && !blk.removing) {
+              let key = `${nr},${nc}`;
+              if (!removingSet.has(key) && !grayToRemove.some(([gR,gC])=>gR===nr&&gC===nc)) {
+                grayToRemove.push([nr,nc]);
+              }
+            }
+          }
+        });
+      }
+      connected.forEach(([rr, cc]) => {
+        board[rr][cc].removing = true;
+      });
+      grayToRemove.forEach(([gr, gc]) => {
+        board[gr][gc].removing = true;
+      });
+      renderBoard();
+      setTimeout(() => {
+        connected.forEach(([rr, cc]) => {
+          board[rr][cc].empty = true;
+          board[rr][cc].removing = false;
+        });
+        grayToRemove.forEach(([gr, gc]) => {
+          board[gr][gc].empty = true;
+          board[gr][gc].removing = false;
+        });
+        dropBlocksWithAnimationAndFill();
+        turns--;
+        renderBoard();
+        if (turns <= 0 && !isCleared()) {
+          setTimeout(() => gameOver(), 700);
+        }
+      }, 350);
+    }
+
+    function dropBlocksWithAnimationAndFill() {
+      let tasks = [];
+      for (let c = 0; c < COLS; c++) {
+        let stack = [];
+        for (let r = ROWS-1; r >= 0; r--) {
+          board[r][c].falling = false;
+          if (!board[r][c].empty) stack.push(Object.assign({}, board[r][c]));
+        }
+        let newBlocks = [];
+        for (let i = 0; i < ROWS - stack.length; i++) {
+          newBlocks.push({
+            color: COLORS[Math.floor(Math.random() * COLORS.length)],
+            empty: false,
+            removing: false,
+            falling: true,
+            stageClear: false,
+          });
+        }
+        let newCol = [...newBlocks.reverse(), ...stack.reverse()];
+        for (let r = 0; r < ROWS; r++) {
+          board[r][c] = newCol[r];
+          if (board[r][c].falling) tasks.push([r, c]);
+        }
+      }
+      renderBoard();
+      if (tasks.length > 0) {
+        setTimeout(() => {
+          for (const [r, c] of tasks) {
+            board[r][c].falling = false;
+          }
+          renderBoard();
+          if (isCleared()) {
+            cleared = true;
+            setTimeout(() => stageClearAnimation(), 700);
+          }
+          animating = false;
+        }, 350);
+      } else {
+        if (isCleared()) {
+          cleared = true;
+          setTimeout(() => stageClearAnimation(), 700);
+        }
+        animating = false;
+      }
+    }
+
+    function isCleared() {
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (board[r][c].color === GRAY_COLOR && !board[r][c].empty) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    // クリア演出：上から下に透明化しながら効果音
+    function stageClearAnimation() {
+      isStageClearAnimating = true;
+      let delay = 0;
+      for (let r = 0; r < ROWS; r++) {
+        setTimeout(() => {
+          for (let c = 0; c < COLS; c++) {
+            if (!board[r][c].empty) {
+              board[r][c].stageClear = true;
+            }
+          }
+          renderBoard();
+          playSE();
+        }, delay);
+        delay += 90; // 1段ごとに90ms
+      }
+      setTimeout(() => {
+        // 全部消去
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            board[r][c].empty = true;
+            board[r][c].stageClear = false;
+          }
+        }
+        renderBoard();
+        showMessage("クリア 次のステージへ");
+        setTimeout(() => {
+          isStageClearAnimating = false;
+          nextStage();
+        }, 600);
+      }, ROWS*90 + 400);
+    }
+
+    function stageClear() {
+      stageClearAnimation();
+    }
+
+    function nextStage() {
+      stage++;
+      if (stage >= STAGES.length) {
+        showMessage("全ステージクリア。おめでとう");
+        gameStarted = false;
+        document.getElementById('start-btn').classList.remove('hidden');
+        document.getElementById('reset-btn').classList.remove('hidden');
+        document.getElementById('start-btn').disabled = false;
+        document.getElementById('reset-btn').disabled = true;
+        pauseBGM();
+        return;
+      }
+      startStage();
+    }
+
+    function startStage() {
+      turns = STAGES[stage].turn;
+      initBoard();
+      gameStarted = true;
+      cleared = false;
+      gameOvered = false;
+      isStageClearAnimating = false;
+      showMessage(`ステージ${stage+1} スタート`);
+      playBGM(false);
+      renderBoard();
+    }
+
+    function showMessage(msg, color="#3b5") {
+      clearTimeout(messageTimeout);
+      const msgDiv = document.getElementById('message');
+      msgDiv.textContent = msg;
+      msgDiv.style.color = color;
+      if (!msg.includes("クリア")) {
+        messageTimeout = setTimeout(() => {
+          msgDiv.textContent = '';
+        }, 3000);
+      }
+    }
+
+    function startGame() {
+      stage = 0;
+      turns = STAGES[stage].turn;
+      startStage();
+      document.getElementById('start-btn').classList.add('hidden');
+      document.getElementById('reset-btn').classList.add('hidden');
+      document.getElementById('instructions').classList.add('hidden');
+    }
+
+    function resetGame() {
+      pauseBGM();
+      gameStarted = false;
+      cleared = false;
+      gameOvered = false;
+      isStageClearAnimating = false;
+      clearTimeout(messageTimeout);
+      document.getElementById('message').textContent = '';
+      document.getElementById('stage-info').textContent = '';
+      document.getElementById('turn-info').textContent = '';
+      document.getElementById('start-btn').classList.remove('hidden');
+      document.getElementById('reset-btn').classList.remove('hidden');
+      document.getElementById('start-btn').disabled = false;
+      document.getElementById('reset-btn').disabled = true;
+      document.getElementById('instructions').classList.remove('hidden');
+      const boardDiv = document.getElementById('game-board');
+      boardDiv.innerHTML = '';
+    }
+
+    function gameOver() {
+      gameOvered = true;
+      gameStarted = false;
+      isStageClearAnimating = false;
+      showMessage("ゲームオーバー", "#c22");
+      pauseBGM();
+      document.getElementById('start-btn').classList.remove('hidden');
+      document.getElementById('reset-btn').classList.remove('hidden');
+      document.getElementById('start-btn').disabled = false;
+      document.getElementById('reset-btn').disabled = true;
+      document.getElementById('instructions').classList.remove('hidden');
+    }
+
+    function playSE() {
+      const se = document.getElementById('se');
+      se.currentTime = 0;
+      se.play();
+    }
+    function playBGM(reset = true) {
+      const bgm = document.getElementById('bgm');
+      if (bgm.paused) {
+        bgm.currentTime = 0;
+        bgm.volume = 0.4;
+        bgm.play();
+      } else if (!reset) {
+        // 何もしない
+      } else {
+        bgm.currentTime = 0;
+        bgm.play();
+      }
+    }
+    function pauseBGM() {
+      const bgm = document.getElementById('bgm');
+      bgm.pause();
+      bgm.currentTime = 0;
+    }
+  </script>
+</body>
+</html>
